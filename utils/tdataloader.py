@@ -10,10 +10,7 @@ import random as rd
 from random import random, choice
 from scipy.ndimage.filters import gaussian_filter
 from io import BytesIO
-mp = {0: 'imagenet_ai_0508_adm', 1: 'imagenet_ai_0419_biggan', 2: 'imagenet_glide', 3: 'imagenet_midjourney',
-      4: 'imagenet_ai_0419_sdv4', 5: 'imagenet_ai_0424_sdv5', 6: 'imagenet_ai_0419_vqdm', 7: 'imagenet_ai_0424_wukong',
-      8: 'imagenet_DALLE2'
-      }
+mp = {0: 'imagenet_ai_1203_cityu'}
 
 
 def sample_continuous(s):
@@ -261,45 +258,10 @@ def get_loader(opt):
 
     datasets = []
     if choices[0] == 1:
-        adm_dataset = genImageTrainDataset(
-            image_root, "imagenet_ai_0508_adm", opt=opt)
-        datasets.append(adm_dataset)
-        print("train on: imagenet_ai_0508_adm")
-    if choices[1] == 1:
-        biggan_dataset = genImageTrainDataset(
-            image_root, "imagenet_ai_0419_biggan", opt=opt)
-        datasets.append(biggan_dataset)
-        print("train on: imagenet_ai_0419_biggan")
-    if choices[2] == 1:
-        glide_dataset = genImageTrainDataset(
-            image_root, "imagenet_glide", opt=opt)
-        datasets.append(glide_dataset)
-        print("train on: imagenet_glide")
-    if choices[3] == 1:
-        midjourney_dataset = genImageTrainDataset(
-            image_root, "imagenet_midjourney", opt=opt)
-        datasets.append(midjourney_dataset)
-        print("train on: imagenet_midjourney")
-    if choices[4] == 1:
-        sdv14_dataset = genImageTrainDataset(
-            image_root, "imagenet_ai_0419_sdv4", opt=opt)
-        datasets.append(sdv14_dataset)
-        print("train on: imagenet_ai_0419_sdv4")
-    if choices[5] == 1:
-        sdv15_dataset = genImageTrainDataset(
-            image_root, "imagenet_ai_0424_sdv5", opt=opt)
-        datasets.append(sdv15_dataset)
-        print("train on: imagenet_ai_0424_sdv5")
-    if choices[6] == 1:
-        vqdm_dataset = genImageTrainDataset(
-            image_root, "imagenet_ai_0419_vqdm", opt=opt)
-        datasets.append(vqdm_dataset)
-        print("train on: imagenet_ai_0419_vqdm")
-    if choices[7] == 1:
-        wukong_dataset = genImageTrainDataset(
-            image_root, "imagenet_ai_0424_wukong", opt=opt)
-        datasets.append(wukong_dataset)
-        print("train on: imagenet_ai_0424_wukong")
+        cityu_dataset = genImageTrainDataset(
+            image_root, "imagenet_ai_1203_cityu", opt=opt)
+        datasets.append(cityu_dataset)
+        print("train on: imagenet_ai_1203_cityu")
 
     train_dataset = torch.utils.data.ConcatDataset(datasets)
     train_loader = DataLoader(train_dataset, batch_size=opt.batchsize,

@@ -22,20 +22,20 @@ class TrainOptions():
         # train setting
         parser.add_argument('--batchsize', type=int,
                             default=64, help='input batch size')
-        parser.add_argument('--choices', default=[0, 0, 0, 0, 1, 0, 0, 0])
+        parser.add_argument('--choices', default=[1])
         parser.add_argument('--epoch', type=int, default=30)
         parser.add_argument('--lr', default=1e-4)
         parser.add_argument('--trainsize', type=int, default=256)
         parser.add_argument('--load', type=str,
                             default=None)
         parser.add_argument('--image_root', type=str,
-                            default='/data/chenjiaxuan/data/genImage')
+                            default='/root/autodl-fs/genImage')
         parser.add_argument('--save_path', type=str,
                             default='./snapshot/sortnet/')
         parser.add_argument('--isPatch', action='store_false')
         parser.add_argument('--patch_size', default=32)
         parser.add_argument('--aug', action='store_false')
-        parser.add_argument('--gpu_id', type=str, default='3')
+        parser.add_argument('--gpu_id', type=str, default='0')
         parser.add_argument('--log_name', default='log3.log',
                             help='rename the logfile', type=str)
         parser.add_argument('--val_interval', default=1,
