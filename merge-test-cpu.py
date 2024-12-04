@@ -16,7 +16,8 @@ import pandas as pd
 import os
 from tabulate import tabulate
 import cv2
-from random import random, choice
+import random
+from random import choice
 from scipy.ndimage.filters import gaussian_filter
 from io import BytesIO
 
@@ -287,71 +288,6 @@ class SRMConv2d_simple(nn.Module):
         filters = torch.FloatTensor(filters)    # (3,3,5,5)
         return filters
 
-
-class SRMConv2d_Separate(nn.Module):
-
-    def __init__(self, inc, outc, learnable=False):
-        super(SRMConv2d_Separate, self).__init__()
-        self.inc = inc
-        self.truc = nn.Hardtanh(-3, 3)
-        kernel = self._build_kernel(inc)  # (3,3,5,5)
-        self.kernel = nn.Parameter(data=kernel, requires_grad=learnable)
-        # self.hor_kernel = self._build_kernel().transpose(0,1,3,2)
-        self.out_conv = nn.Sequential(
-            nn.Conv2d(3*inc, outc, 1, 1, 0, 1, 1, bias=False),
-            nn.BatchNorm2d(outc),
-            nn.ReLU(inplace=True)
-        )
-
-        for ly in self.out_conv.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-
-    def forward(self, x):
-        '''
-        x: imgs (Batch, H, W, 3)
-        '''
-        out = F.conv2d(x, self.kernel, stride=1, padding=2, groups=self.inc)
-        out = self.truc(out)
-        out = self.out_conv(out)
-
-        return out
-
-    def _build_kernel(self, inc):
-        # filter1: KB
-        filter1 = [[0, 0, 0, 0, 0],
-                   [0, -1, 2, -1, 0],
-                   [0, 2, -4, 2, 0],
-                   [0, -1, 2, -1, 0],
-                   [0, 0, 0, 0, 0]]
-        # filter2：KV
-        filter2 = [[-1, 2, -2, 2, -1],
-                   [2, -6, 8, -6, 2],
-                   [-2, 8, -12, 8, -2],
-                   [2, -6, 8, -6, 2],
-                   [-1, 2, -2, 2, -1]]
-        # # filter3：hor 2rd
-        filter3 = [[0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0],
-                   [0, 1, -2, 1, 0],
-                   [0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0]]
-
-        filter1 = np.asarray(filter1, dtype=float) / 4.
-        filter2 = np.asarray(filter2, dtype=float) / 12.
-        filter3 = np.asarray(filter3, dtype=float) / 2.
-        # statck the filters
-        filters = [[filter1],  # , filter1, filter1],
-                   [filter2],  # , filter2, filter2],
-                   [filter3]]  # , filter3, filter3]]  # (3,3,5,5)
-        filters = np.array(filters)
-        # filters = np.repeat(filters, inc, axis=1)
-        filters = np.repeat(filters, inc, axis=0)
-        filters = torch.FloatTensor(filters)    # (3,3,5,5)
-        # print(filters.size())
-        return filters
-
-# %%
 #ssp.py
 class ssp(nn.Module):
     def __init__(self, pretrain=True):
@@ -394,7 +330,7 @@ def patch_img(img, patch_size, height):
     new_img = patch_list[0]
     return new_img
 
-import  random
+
 def set_random_seed(seed=42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -402,7 +338,6 @@ def set_random_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     np.random.seed(seed)
     random.seed(seed)
-
 
 # %%
 #dataloader.py
@@ -445,7 +380,7 @@ def sample_continuous(s):
         return s[0]
     if len(s) == 2:
         rg = s[1] - s[0]
-        return random() * rg + s[0]
+        return random.random() * rg + s[0]
     raise ValueError("Length of iterable s should be 1 or 2.")
 
 
@@ -507,11 +442,11 @@ def jpeg_from_key(img, compress_val, key):
 def data_augment(img, opt):
     img = np.array(img)
 
-    if random() < opt.blur_prob:
+    if random.random() < opt.blur_prob:
         sig = sample_continuous(opt.blur_sig)
         gaussian_blur(img, sig)
 
-    if random() < opt.jpg_prob:
+    if random.random() < opt.jpg_prob:
         method = sample_discrete(opt.jpg_method)
         qual = sample_randint(opt.jpg_qual)
         img = jpeg_from_key(img, qual, method)
@@ -595,10 +530,9 @@ def traversal_label_loader(label_loader, label_size):
     label_name = os.path.basename(os.path.dirname(demo_path))
     right_label_image = 0
     for index, (images, labels) in enumerate(label_loader):
-        images = images
-        labels = labels
         res = model(images)
         res = torch.sigmoid(res).ravel()
+        print("not good, current res is", res)
         current_prediction = (((res > 0.5) & (labels == 1)) | ((res < 0.5) & (labels == 0))).cpu().numpy()
         print_per_pic_res(index, len(images), current_prediction, label_name, label_loader)
         right_label_image += current_prediction.sum()
@@ -639,9 +573,9 @@ def get_options():
         'load': './snapshot/sortnet/cityu.pth',
         'image_root': '/root/autodl-fs/genImage',
         'save_path': './snapshot/sortnet/',
-        'isPatch': False,
+        'isPatch': True,
         'patch_size': 32,
-        'aug': False,
+        'aug': True,
         'gpu_id': '0',
         'log_name': 'log3.log',
         'val_interval': 1,
@@ -660,7 +594,7 @@ def rewrite_test_opt(test_dataset_path, load_model_path=None):
     return test_opt
 
 if __name__ == '__main__':
-    # set_random_seed()
+    set_random_seed()
     #修改为数据集所在的绝对路径，不是相对
     # input_test_dataset_path = input("输入测试集的文件夹名称(无绝对路径):")
     test_opt = rewrite_test_opt("imagenet_cityu_test")

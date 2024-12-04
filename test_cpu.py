@@ -53,6 +53,7 @@ def traversal_label_loader(label_loader, label_size):
     for index, (images, labels) in enumerate(label_loader):
         res = model(images)
         res = torch.sigmoid(res).ravel()
+        print("good, current res is", res)
         current_prediction = (((res > 0.5) & (labels == 1)) | ((res < 0.5) & (labels == 0))).cpu().numpy()
         print_per_pic_res(index, len(images), current_prediction, label_name, label_loader)
         right_label_image += current_prediction.sum()
@@ -77,25 +78,18 @@ def val(test_data_list, model):
 
 
 if __name__ == '__main__':
-    # set_random_seed()
+    set_random_seed()
     # train and val options
-    opt = TrainOptions().parse()
-    val_opt = get_val_opt()
+    test_opt = TrainOptions().parse(print_options=True)
 
     # load data
     print('load data...')
-    val_loader = get_test_data_list(val_opt)
+    test_data_list = get_test_data_list(test_opt)
 
-    # 不再进行GPU相关的设备设置
-    # 直接实例化模型，不需要转移到GPU上（即去掉.cuda()方法调用）
     model = ssp()
-    if opt.load is not None:
-        # 加载模型参数时，使用map_location指定加载到CPU上
-        model.load_state_dict(torch.load(opt.load, map_location=torch.device('cpu')))
-        print('load model from', opt.load)
-    optimizer = torch.optim.Adam(model.parameters(), opt.lr)
-    save_path = opt.save_path
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
+    if test_opt.load is None:
+        print("not found model")
+    model.load_state_dict(torch.load(test_opt.load, map_location=torch.device('cpu')))
+    print('load model from', test_opt.load)
     print("Start test")
-    val(val_loader, model)
+    val(test_data_list, model)
