@@ -4,9 +4,7 @@ from utils.util import set_random_seed, poly_lr
 from utils.tdataloader import get_loader, get_val_loader
 from options import TrainOptions
 from networks.ssp import ssp
-from utils.loss import bceLoss
-from datetime import datetime
-import numpy as np
+
 """Currently assumes jpg_prob, blur_prob 0 or 1"""
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -105,5 +103,5 @@ if __name__ == '__main__':
     save_path = opt.save_path
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    print("Start train")
+    print("Start test")
     val(val_loader, model, save_path)

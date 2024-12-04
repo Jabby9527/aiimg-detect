@@ -2,6 +2,13 @@ import argparse
 import os
 import torch
 
+def str_to_list(s):
+    s = s.strip()
+    if s.startswith('[') and s.endswith(']'):
+        elements = s[1:-1].split(',')
+        return [int(e.strip()) for e in elements]
+    else:
+        return [int(s)]
 
 class TrainOptions():
     def __init__(self):
@@ -22,12 +29,12 @@ class TrainOptions():
         # train setting
         parser.add_argument('--batchsize', type=int,
                             default=64, help='input batch size')
-        parser.add_argument('--choices', default=[1])
+        parser.add_argument('--choices', default=[1], type=str_to_list)
         parser.add_argument('--epoch', type=int, default=30)
         parser.add_argument('--lr', default=1e-4)
         parser.add_argument('--trainsize', type=int, default=256)
         parser.add_argument('--load', type=str,
-                            default=None)
+                            default='./snapshot/sortnet/cityu.pth')
         parser.add_argument('--image_root', type=str,
                             default='/root/autodl-fs/genImage')
         parser.add_argument('--save_path', type=str,
@@ -41,6 +48,7 @@ class TrainOptions():
         parser.add_argument('--val_interval', default=1,
                             type=int, help='val per interval')
         parser.add_argument('--val_batchsize', default=64, type=int)
+        parser.add_argument('--set_dir', type=str)
         return parser
 
     def gather_options(self):
@@ -53,7 +61,6 @@ class TrainOptions():
         # get the basic options
         opt, _ = parser.parse_known_args()
         self.parser = parser
-
         return parser.parse_args()
 
     def print_options(self, opt):

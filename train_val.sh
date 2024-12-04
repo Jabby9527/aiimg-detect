@@ -1,1 +1,1 @@
-python train_val.py --blur_prob=0 --jpg_prob=0 --batchsize=64 --epoch=30 --lr=1e-4 --patchsize=32 
+python train_val.py --blur_prob=0 --jpg_prob=0 --batchsize=64 --epoch=30 --lr=1e-4 --patch_size=32

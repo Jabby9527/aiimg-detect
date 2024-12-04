@@ -229,10 +229,8 @@ class genImageTestDataset(Dataset):
 
 
 def get_single_loader(opt, image_dir, is_real):
-    val_dataset = genImageValDataset(
-        opt.image_root, image_dir=image_dir, is_real=is_real, opt=opt)
-    val_loader = DataLoader(val_dataset, batch_size=opt.val_batchsize,
-                            shuffle=False, num_workers=4, pin_memory=True)
+    val_dataset = genImageValDataset(opt.image_root, image_dir=image_dir, is_real=is_real, opt=opt)
+    val_loader = DataLoader(val_dataset, batch_size=opt.val_batchsize, shuffle=False, num_workers=4, pin_memory=True)
     return val_loader, len(val_dataset)
 
 
@@ -244,10 +242,8 @@ def get_val_loader(opt):
         if choice == 0 or choice == 1:
             print("val on:", mp[i])
             datainfo['name'] = mp[i]
-            datainfo['val_ai_loader'], datainfo['ai_size'] = get_single_loader(
-                opt, datainfo['name'], is_real=False)
-            datainfo['val_nature_loader'], datainfo['nature_size'] = get_single_loader(
-                opt, datainfo['name'], is_real=True)
+            datainfo['val_ai_loader'], datainfo['ai_size'] = get_single_loader(opt, datainfo['name'], is_real=False)
+            datainfo['val_nature_loader'], datainfo['nature_size'] = get_single_loader(opt, datainfo['name'], is_real=True)
             loader.append(datainfo)
     return loader
 
@@ -268,6 +264,19 @@ def get_loader(opt):
                               shuffle=True, num_workers=4, pin_memory=True)
     return train_loader
 
+
+def get_single_test_loader(opt):
+    choices = opt.choices
+    test_dir = opt.set_dir
+    loader = []
+    datainfo=dict()
+    if choices[0] == 2:
+        print("val on:", test_dir)
+        datainfo['name'] = test_dir
+        datainfo['val_ai_loader'], datainfo['ai_size'] = get_single_loader(opt, datainfo['name'], is_real=False)
+        datainfo['val_nature_loader'], datainfo['nature_size'] = get_single_loader(opt, datainfo['name'], is_real=True)
+        loader.append(datainfo)
+    return loader
 
 def get_test_loader(opt):
     choices = opt.choices
