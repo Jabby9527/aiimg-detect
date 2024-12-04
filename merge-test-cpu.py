@@ -3,8 +3,6 @@
 # members:
 # Qiulin Su - 723405483
 
-# %%
-# import depedencies
 import torch
 from torch import nn
 import torch.utils.model_zoo as model_zoo
@@ -14,14 +12,10 @@ import numpy as np
 from torchvision.transforms import transforms
 from PIL import Image
 from PIL import ImageFile
-import random
 import pandas as pd
-from datetime import datetime
 import os
-import argparse
 from tabulate import tabulate
 import cv2
-import random as rd
 from random import random, choice
 from scipy.ndimage.filters import gaussian_filter
 from io import BytesIO
@@ -357,14 +351,6 @@ class SRMConv2d_Separate(nn.Module):
         # print(filters.size())
         return filters
 
-
-if __name__ == '__main__':
-    x = torch.rand(1, 3, 224, 224)
-    srm = SRMConv2d_simple()
-    output = srm(x)
-    output = np.array(output)
-    print(output.shape)
-
 # %%
 #ssp.py
 class ssp(nn.Module):
@@ -380,15 +366,6 @@ class ssp(nn.Module):
         x = self.disc(x)
         return x
 
-
-if __name__ == '__main__':
-    model = ssp(pretrain=True)
-    print(model)
-
-
-# %%
-#utils.py
-import random
 def compute(patch):
     weight, height = patch.size
     m = weight
@@ -417,6 +394,7 @@ def patch_img(img, patch_size, height):
     new_img = patch_list[0]
     return new_img
 
+import  random
 def set_random_seed(seed=42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -480,7 +458,7 @@ def sample_discrete(s):
 def sample_randint(s):
     if len(s) == 1:
         return s[0]
-    return rd.randint(s[0], s[1])
+    return random.randint(s[0], s[1])
 
 
 def gaussian_blur_gray(img, sigma):
@@ -678,27 +656,18 @@ def rewrite_test_opt(test_dataset_path, load_model_path=None):
     test_opt.choices = [2]
     test_opt.image_root = '/Users/sequel/linkcodes/homework/ml/data/genImage'
     test_opt.test_set_dir = test_dataset_path
-    test_opt.load =  './cityu.pth' if load_model_path is None else load_model_path
+    test_opt.load = './cityu.pth' if load_model_path is None else load_model_path
     return test_opt
 
 if __name__ == '__main__':
-    set_random_seed()
+    # set_random_seed()
     #修改为数据集所在的绝对路径，不是相对
     # input_test_dataset_path = input("输入测试集的文件夹名称(无绝对路径):")
     test_opt = rewrite_test_opt("imagenet_cityu_test")
-    print(test_opt)
-
     # load data
     print('load data...')
-    opt = test_opt
     test_data_list = get_test_data_list(test_opt)
     print(test_data_list)
-
-    # # cuda config
-    # # set the device for training
-    # if test_opt.gpu_id == '0':
-    #     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-    #     print('USE GPU 0')
 
     # load model
     model = ssp()

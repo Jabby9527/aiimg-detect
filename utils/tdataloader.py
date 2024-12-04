@@ -265,18 +265,18 @@ def get_loader(opt):
     return train_loader
 
 
-def get_single_test_loader(opt):
+def get_test_data_list(opt):
     choices = opt.choices
     test_dir = opt.set_dir
-    loader = []
-    datainfo=dict()
+    list_perdict_has_loader_info = []
+    loader_info_dict=dict()
     if choices[0] == 2:
         print("val on:", test_dir)
-        datainfo['name'] = test_dir
-        datainfo['val_ai_loader'], datainfo['ai_size'] = get_single_loader(opt, datainfo['name'], is_real=False)
-        datainfo['val_nature_loader'], datainfo['nature_size'] = get_single_loader(opt, datainfo['name'], is_real=True)
-        loader.append(datainfo)
-    return loader
+        loader_info_dict['name'] = test_dir
+        loader_info_dict['val_ai_loader'], loader_info_dict['ai_size'] = get_single_loader(opt, loader_info_dict['name'], is_real=False)
+        loader_info_dict['val_nature_loader'], loader_info_dict['nature_size'] = get_single_loader(opt, loader_info_dict['name'], is_real=True)
+        list_perdict_has_loader_info.append(loader_info_dict)
+    return list_perdict_has_loader_info
 
 def get_test_loader(opt):
     choices = opt.choices

@@ -8,13 +8,10 @@ import torch
 from tabulate import tabulate
 
 from utils.util import set_random_seed, poly_lr
-from utils.tdataloader import get_single_test_loader, get_val_loader
+from utils.tdataloader import get_test_data_list, get_val_loader
 from options import TrainOptions
 from networks.ssp import ssp
 import pandas as pd
-from utils.loss import bceLoss
-from datetime import datetime
-import numpy as np
 
 """Currently assumes jpg_prob, blur_prob 0 or 1"""
 from PIL import ImageFile
@@ -62,12 +59,12 @@ def traversal_label_loader(label_loader, label_size):
     print(f'{label_name} accu:{right_label_image / label_size}')
     return right_label_image
 
-def val(val_loader, model):
+def val(test_data_list, model):
     model.eval()
     total_right_image = total_image = 0
     with torch.no_grad():
-        for loader in val_loader:
-            name, val_ai_loader, ai_size, val_nature_loader, nature_size = loader['name'], loader['val_ai_loader'], loader['ai_size'], loader['val_nature_loader'], loader['nature_size']
+        for dict_loader in test_data_list:
+            name, val_ai_loader, ai_size, val_nature_loader, nature_size = dict_loader['name'], dict_loader['val_ai_loader'], dict_loader['ai_size'], dict_loader['val_nature_loader'], dict_loader['nature_size']
             print("val on:", name)
             right_ai_image = traversal_label_loader(val_ai_loader, ai_size)
             right_nature_image = traversal_label_loader(val_nature_loader, nature_size)
@@ -80,14 +77,14 @@ def val(val_loader, model):
 
 
 if __name__ == '__main__':
-    set_random_seed()
+    # set_random_seed()
     # train and val options
     opt = TrainOptions().parse()
     val_opt = get_val_opt()
 
     # load data
     print('load data...')
-    val_loader = get_single_test_loader(val_opt)
+    val_loader = get_test_data_list(val_opt)
 
     # 不再进行GPU相关的设备设置
     # 直接实例化模型，不需要转移到GPU上（即去掉.cuda()方法调用）
