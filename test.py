@@ -1,8 +1,8 @@
 import os
 import torch
-from utils.util import set_random_seed, poly_lr
-from utils.tdataloader import get_loader, get_val_loader
-from options import TrainOptions
+from utils.util import set_random_seed
+from utils.tdataloader import get_val_dict_infos
+from utils.options import TrainOptions
 from networks.ssp import ssp
 
 """Currently assumes jpg_prob, blur_prob 0 or 1"""
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     # load data
     print('load data...')
 
-    val_loader = get_val_loader(val_opt)
+    val_loader = get_val_dict_infos(val_opt)
 
     # cuda config
     # set the device for training

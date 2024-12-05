@@ -10,6 +10,10 @@ def str_to_list(s):
     else:
         return [int(s)]
 
+class Opt:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
 class TrainOptions():
     def __init__(self):
         self.initialized = False
@@ -103,3 +107,38 @@ class TrainOptions():
 
         self.opt = opt
         return self.opt
+
+def get_options():
+    options = {
+        'name': 'experiment_name',
+        'rz_interp': 'bilinear',
+        'blur_prob': 0,
+        'blur_sig': [0, 1],
+        'jpg_prob': 0,
+        'jpg_method': ['pil', 'cv2'],
+        'jpg_qual': [90, 100],
+        'CropSize': 224,
+        'batchsize': 64,
+        'choices': [1],
+        'epoch': 30,
+        'lr': 1e-4,
+        'trainsize': 256,
+        'load': './snapshot/sortnet/cityu.pth',
+        'image_root': '/root/autodl-fs/genImage',
+        'save_path': './snapshot/sortnet/',
+        'isPatch': True,
+        'patch_size': 32,
+        'aug': True,
+        'gpu_id': '0',
+        'log_name': 'log3.log',
+        'val_interval': 1,
+        'val_batchsize': 64,
+        'test_set_dir': None,
+        'print_gap': 2,
+        'epochs': 30,
+        #数据集文件夹名称列表
+        'dataset_names': ['imagenet_ai_1203_cityu'],
+        'folder_dict':{'nature':'0_real', 'ai':'1_fake'}
+    }
+    opt = Opt(**options)
+    return opt

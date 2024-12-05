@@ -4,14 +4,15 @@ from torchvision import transforms
 import os
 from utils.patch import patch_img
 from PIL import Image
+from pillow_heif import register_heif_opener
 import numpy as np
 import cv2
 import random as rd
 from random import random, choice
 from scipy.ndimage.filters import gaussian_filter
 from io import BytesIO
-mp = {0: 'imagenet_ai_1203_cityu'}
 
+register_heif_opener()
 
 def sample_continuous(s):
     if len(s) == 1:
@@ -122,13 +123,16 @@ def processing(img, opt):
 class genImageTrainDataset(Dataset):
     def __init__(self, image_root, image_dir, opt):
         super().__init__()
+        folder_map = opt.folder_dict
+        nature = folder_map.get('nature', 'nature') #nature-real
+        ai = folder_map.get('ai', 'ai') #ai-fake
         self.opt = opt
         self.root = os.path.join(image_root, image_dir, "train")
-        self.nature_path = os.path.join(self.root, "nature")
-        self.nature_list = [os.path.join(self.nature_path, f)
-                            for f in os.listdir(self.nature_path)]
+        self.nature_path = os.path.join(self.root, nature)
+        self.nature_list = [os.path.join(self.nature_path, f) for f in os.listdir(self.nature_path)]
         self.nature_size = len(self.nature_list)
-        self.ai_path = os.path.join(self.root, "ai")
+        ######
+        self.ai_path = os.path.join(self.root, ai)
         self.ai_list = [os.path.join(self.ai_path, f)
                         for f in os.listdir(self.ai_path)]
         self.ai_size = len(self.ai_list)
@@ -160,16 +164,19 @@ class genImageTrainDataset(Dataset):
 class genImageValDataset(Dataset):
     def __init__(self, image_root, image_dir, is_real, opt):
         super().__init__()
+        folder_map = opt.folder_dict
+        nature = folder_map.get('nature', 'nature')
+        ai = folder_map.get('ai', 'ai')
         self.opt = opt
         self.root = os.path.join(image_root, image_dir, "val")
         if is_real:
-            self.img_path = os.path.join(self.root, 'nature')
+            self.img_path = os.path.join(self.root, nature)
             self.img_list = [os.path.join(self.img_path, f)
                              for f in os.listdir(self.img_path)]
             self.img_len = len(self.img_list)
             self.labels = torch.ones(self.img_len)
         else:
-            self.img_path = os.path.join(self.root, 'ai')
+            self.img_path = os.path.join(self.root, ai)
             self.img_list = [os.path.join(self.img_path, f)
                              for f in os.listdir(self.img_path)]
             self.img_len = len(self.img_list)
@@ -233,29 +240,26 @@ def get_single_loader(opt, image_dir, is_real):
     val_loader = DataLoader(val_dataset, batch_size=opt.val_batchsize, shuffle=False, num_workers=4, pin_memory=True)
     return val_loader, len(val_dataset)
 
-
-def get_val_loader(opt):
-    choices = opt.choices
-    loader = []
-    for i, choice in enumerate(choices):
+def get_val_dict_infos(opt):
+    dataset_names = opt.dataset_names
+    val_loaders = []
+    for name in dataset_names:
         datainfo = dict()
-        if choice == 0 or choice == 1:
-            print("val on:", mp[i])
-            datainfo['name'] = mp[i]
-            datainfo['val_ai_loader'], datainfo['ai_size'] = get_single_loader(opt, datainfo['name'], is_real=False)
-            datainfo['val_nature_loader'], datainfo['nature_size'] = get_single_loader(opt, datainfo['name'], is_real=True)
-            loader.append(datainfo)
-    return loader
+        print("val on:", name)
+        datainfo['name'] = name
+        datainfo['val_ai_loader'], datainfo['ai_size'] = get_single_loader(opt, datainfo['name'], is_real=False)
+        datainfo['val_nature_loader'], datainfo['nature_size'] = get_single_loader(opt, datainfo['name'], is_real=True)
+        val_loaders.append(datainfo)
+    return val_loaders
 
-
+#waste, see get_train_loader_by_names
 def get_loader(opt):
     choices = opt.choices
     image_root = opt.image_root
 
     datasets = []
     if choices[0] == 1:
-        cityu_dataset = genImageTrainDataset(
-            image_root, "imagenet_ai_1203_cityu", opt=opt)
+        cityu_dataset = genImageTrainDataset(image_root, "imagenet_ai_1203_cityu", opt=opt)
         datasets.append(cityu_dataset)
         print("train on: imagenet_ai_1203_cityu")
 
@@ -264,10 +268,24 @@ def get_loader(opt):
                               shuffle=True, num_workers=4, pin_memory=True)
     return train_loader
 
+#gray replace get_loader
+def get_train_loader_by_names(opt):
+    image_root = opt.image_root
+    dataset_names = opt.dataset_names
+    datasets = []
+    for name in dataset_names:
+        per_data_set = genImageTrainDataset(image_root, name, opt=opt)
+        datasets.append(per_data_set)
+        print(f"train on: {name}")
+
+    train_dataset = torch.utils.data.ConcatDataset(datasets)
+    train_loader = DataLoader(train_dataset, batch_size=opt.batchsize, shuffle=True, num_workers=4, pin_memory=True)
+    return train_loader
+
 
 def get_test_data_list(opt):
     choices = opt.choices
-    test_dir = opt.set_dir
+    test_dir = opt.test_set_dir
     list_perdict_has_loader_info = []
     loader_info_dict=dict()
     if choices[0] == 2:

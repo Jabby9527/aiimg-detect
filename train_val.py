@@ -1,12 +1,12 @@
 import os
 import torch
 from utils.util import set_random_seed, poly_lr
-from utils.tdataloader import get_loader, get_val_loader
-from options import TrainOptions
+from utils.tdataloader import get_loader, get_val_dict_infos
+from utils.options import TrainOptions
 from networks.ssp import ssp
 from utils.loss import bceLoss
 from datetime import datetime
-import numpy as np
+
 """Currently assumes jpg_prob, blur_prob 0 or 1"""
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     print('load data...')
     train_loader = get_loader(opt)
     total_step = len(train_loader)
-    val_loader = get_val_loader(val_opt)
+    val_loader = get_val_dict_infos(val_opt)
 
     # cuda config
     # set the device for training

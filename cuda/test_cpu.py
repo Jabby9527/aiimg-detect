@@ -4,34 +4,21 @@
 @Date: 2024/12/3
 """
 import os
+import sys
+
+import pandas as pd
 import torch
 from tabulate import tabulate
 
-from utils.util import set_random_seed, poly_lr
-from utils.tdataloader import get_test_data_list, get_val_loader
-from options import TrainOptions
 from networks.ssp import ssp
-import pandas as pd
+from utils.options import get_options
+from utils.tdataloader import get_test_data_list
+from utils.util import set_random_seed
 
 """Currently assumes jpg_prob, blur_prob 0 or 1"""
 from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-
-def get_val_opt():
-    val_opt = TrainOptions().parse(print_options=False)
-    val_opt.isTrain = False
-    val_opt.isVal = True
-    # blur
-    val_opt.blur_prob = 0
-    val_opt.blur_sig = [1]
-    # jpg
-    val_opt.jpg_prob = 0
-    val_opt.jpg_method = ['pil']
-    val_opt.jpg_qual = [90]
-
-    return val_opt
 
 def print_per_pic_res(index, size, current_prediction, label_name, val_label_loader):
     print(f"current checking {label_name} datas:")
@@ -76,20 +63,55 @@ def val(test_data_list, model):
     total_accu = total_right_image / total_image
     print(f'total accuracy:{total_accu}')
 
+def rewrite_test_opt(test_dataset_path):
+    test_opt = get_options()
+    test_opt.choices = [2]
+    test_opt.isTrain = False
+    test_opt.isVal = True
+    # blur
+    test_opt.blur_prob = 0
+    test_opt.blur_sig = [1]
+    # jpg
+    test_opt.jpg_prob = 0
+    test_opt.jpg_method = ['pil']
+    test_opt.jpg_qual = [90]
+    test_opt.image_root = os.path.dirname(test_dataset_path)
+    test_opt.test_set_dir = test_dataset_path
+    #务必保证snapshot在同级目录下，如果加载不成功要修改为绝对路径
+    #------------------------------------------------------------!!!2.可能需要修改的点2-已训练模型的路径(大概率不用)
+    test_opt.load =  './cityu.pth'
+    #每隔64*print_gap个图片打印改批次识别情况
+    test_opt.print_gap = 20
+    return test_opt
 
 if __name__ == '__main__':
     set_random_seed()
-    # train and val options
-    test_opt = TrainOptions().parse(print_options=True)
+    # ------------------------------------------------------------!!!1.可能需要修改的点-测试数据集所在的文件夹【绝对路径】
+    # All you need to do is just to modify this variate
+    # test_dataset_absolute_path = ''
+    test_dataset_absolute_path = '/Users/sequel/linkcodes/homework/ml/data/genImage/imagenet_cityu_test'
+
+    if not test_dataset_absolute_path:
+        print("Not specify the absolute path of test dataset")
+        sys.exit(1)
+    test_opt = rewrite_test_opt(test_dataset_absolute_path)
+
+    if torch.cuda.is_available() and test_opt.gpu_id == '0':
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+        print('USE GPU 0')
 
     # load data
     print('load data...')
-    test_data_list = get_test_data_list(test_opt)
+    val_loader = get_test_data_list(test_opt)
 
-    model = ssp()
+    enable_cuda = torch.cuda.is_available()
+    model = ssp().cuda() if enable_cuda else ssp()
+    device = torch.device('cuda' if enable_cuda else 'cpu')
+
     if test_opt.load is None:
         print("not found model")
-    model.load_state_dict(torch.load(test_opt.load, map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load(test_opt.load, map_location=device))
     print('load model from', test_opt.load)
     print("Start test")
-    val(test_data_list, model)
+
+    val(val_loader, model, test_opt.print_gap)
