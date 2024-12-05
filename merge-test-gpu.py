@@ -1,8 +1,11 @@
 # %% [markdown]
-# # Course Project Group Infomation
-# members:
-# Qiulin Su - 723405483
+# # Matters need attention:
+# ## 1. Please make sure the attachment file cityu.pth (model I pretrain) is on the same directory as this .ipynb
+# ## 2. Only you need to modify is the last cell, after that just click "Run All" to get the result
+# ## 3. Please email me the result, or any problem using zoom to make a quick check together if available
 
+# %%
+# import depedencies
 import torch
 from torch import nn
 import torch.utils.model_zoo as model_zoo
@@ -12,14 +15,14 @@ import numpy as np
 from torchvision.transforms import transforms
 from PIL import Image
 from PIL import ImageFile
-import pandas as pd
-import os
-from tabulate import tabulate
-import cv2
 import random
-from random import choice
+import pandas as pd
+from datetime import datetime
+import os
+import cv2
 from scipy.ndimage.filters import gaussian_filter
 from io import BytesIO
+import sys
 
 # %%
 #resnet.py
@@ -288,6 +291,79 @@ class SRMConv2d_simple(nn.Module):
         filters = torch.FloatTensor(filters)    # (3,3,5,5)
         return filters
 
+
+class SRMConv2d_Separate(nn.Module):
+
+    def __init__(self, inc, outc, learnable=False):
+        super(SRMConv2d_Separate, self).__init__()
+        self.inc = inc
+        self.truc = nn.Hardtanh(-3, 3)
+        kernel = self._build_kernel(inc)  # (3,3,5,5)
+        self.kernel = nn.Parameter(data=kernel, requires_grad=learnable)
+        # self.hor_kernel = self._build_kernel().transpose(0,1,3,2)
+        self.out_conv = nn.Sequential(
+            nn.Conv2d(3*inc, outc, 1, 1, 0, 1, 1, bias=False),
+            nn.BatchNorm2d(outc),
+            nn.ReLU(inplace=True)
+        )
+
+        for ly in self.out_conv.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+
+    def forward(self, x):
+        '''
+        x: imgs (Batch, H, W, 3)
+        '''
+        out = F.conv2d(x, self.kernel, stride=1, padding=2, groups=self.inc)
+        out = self.truc(out)
+        out = self.out_conv(out)
+
+        return out
+
+    def _build_kernel(self, inc):
+        # filter1: KB
+        filter1 = [[0, 0, 0, 0, 0],
+                   [0, -1, 2, -1, 0],
+                   [0, 2, -4, 2, 0],
+                   [0, -1, 2, -1, 0],
+                   [0, 0, 0, 0, 0]]
+        # filter2：KV
+        filter2 = [[-1, 2, -2, 2, -1],
+                   [2, -6, 8, -6, 2],
+                   [-2, 8, -12, 8, -2],
+                   [2, -6, 8, -6, 2],
+                   [-1, 2, -2, 2, -1]]
+        # # filter3：hor 2rd
+        filter3 = [[0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 1, -2, 1, 0],
+                   [0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0]]
+
+        filter1 = np.asarray(filter1, dtype=float) / 4.
+        filter2 = np.asarray(filter2, dtype=float) / 12.
+        filter3 = np.asarray(filter3, dtype=float) / 2.
+        # statck the filters
+        filters = [[filter1],  # , filter1, filter1],
+                   [filter2],  # , filter2, filter2],
+                   [filter3]]  # , filter3, filter3]]  # (3,3,5,5)
+        filters = np.array(filters)
+        # filters = np.repeat(filters, inc, axis=1)
+        filters = np.repeat(filters, inc, axis=0)
+        filters = torch.FloatTensor(filters)    # (3,3,5,5)
+        # print(filters.size())
+        return filters
+
+
+if __name__ == '__main__':
+    x = torch.rand(1, 3, 224, 224)
+    srm = SRMConv2d_simple()
+    output = srm(x)
+    output = np.array(output)
+    print(output.shape)
+
+# %%
 #ssp.py
 class ssp(nn.Module):
     def __init__(self, pretrain=True):
@@ -302,6 +378,15 @@ class ssp(nn.Module):
         x = self.disc(x)
         return x
 
+
+if __name__ == '__main__':
+    model = ssp(pretrain=True)
+    print(model)
+
+
+# %%
+#utils.py
+import random
 def compute(patch):
     weight, height = patch.size
     m = weight
@@ -330,7 +415,6 @@ def patch_img(img, patch_size, height):
     new_img = patch_list[0]
     return new_img
 
-
 def set_random_seed(seed=42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -338,6 +422,7 @@ def set_random_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     np.random.seed(seed)
     random.seed(seed)
+
 
 # %%
 #dataloader.py
@@ -351,15 +436,15 @@ class genImageValDataset(Dataset):
         self.opt = opt
         self.root = os.path.join(image_root, image_dir, "val")
         if is_real:
-            self.img_path = os.path.join(self.root, 'nature')
-            self.img_list = [os.path.join(self.img_path, f) for f in os.listdir(self.img_path)]
-            self.img_len = len(self.img_list)
-            self.labels = torch.ones(self.img_len)
-        else:
-            self.img_path = os.path.join(self.root, 'ai')
+            self.img_path = os.path.join(self.root, '0_real')
             self.img_list = [os.path.join(self.img_path, f) for f in os.listdir(self.img_path)]
             self.img_len = len(self.img_list)
             self.labels = torch.zeros(self.img_len)
+        else:
+            self.img_path = os.path.join(self.root, '1_fake')
+            self.img_list = [os.path.join(self.img_path, f) for f in os.listdir(self.img_path)]
+            self.img_len = len(self.img_list)
+            self.labels = torch.ones(self.img_len)
 
     def rgb_loader(self, path):
         with open(path, 'rb') as f:
@@ -387,13 +472,13 @@ def sample_continuous(s):
 def sample_discrete(s):
     if len(s) == 1:
         return s[0]
-    return choice(s)
+    return random.choice(s)
 
 
 def sample_randint(s):
     if len(s) == 1:
         return s[0]
-    return random.randint(s[0], s[1])
+    return rd.randint(s[0], s[1])
 
 
 def gaussian_blur_gray(img, sigma):
@@ -483,22 +568,22 @@ def processing(img, opt):
 
 def get_single_loader(opt, image_dir, is_real): 
     val_dataset = genImageValDataset(opt.image_root, image_dir=image_dir, is_real=is_real, opt=opt)
-    val_loader = DataLoader(val_dataset, batch_size=opt.val_batchsize, shuffle=False, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=opt.val_batchsize, shuffle=False, pin_memory=True)
     return val_loader, len(val_dataset)
 
 
 def get_test_data_list(opt):
     choices = opt.choices
     test_dir = opt.test_set_dir
-    list_perdict_has_loader_info = []
-    loader_info_dict = dict()
+    dicts_per_has_loader_info = []
+    dict_loader_info=dict()
     if choices[0] == 2:
         print("val on:", test_dir)
-        loader_info_dict['name'] = test_dir
-        loader_info_dict['val_ai_loader'], loader_info_dict['ai_size'] = get_single_loader(opt, loader_info_dict['name'], is_real=False)
-        loader_info_dict['val_nature_loader'], loader_info_dict['nature_size'] = get_single_loader(opt, loader_info_dict['name'], is_real=True)
-        list_perdict_has_loader_info.append(loader_info_dict)
-    return list_perdict_has_loader_info
+        dict_loader_info['name'] = test_dir
+        dict_loader_info['val_ai_loader'], dict_loader_info['ai_size'] = get_single_loader(opt, dict_loader_info['name'], is_real=False)
+        dict_loader_info['val_nature_loader'], dict_loader_info['nature_size'] = get_single_loader(opt, dict_loader_info['name'], is_real=True)
+        dicts_per_has_loader_info.append(dict_loader_info)
+    return dicts_per_has_loader_info
 
 
 # %%
@@ -512,42 +597,47 @@ def get_test_data_list(opt):
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-def print_per_pic_res(index, size, current_prediction, label_name, val_label_loader):
-    print(f"current checking {label_name} datas:")
+def print_per_pic_res(batch_index, size, current_prediction, label_name, val_label_loader):
+    print(f"checking on {batch_index}th batch {label_name} datas:")
     data = []
     for i in range(len(current_prediction)):
-        img_path = val_label_loader.dataset.img_list[index * size + i]
+        img_path = val_label_loader.dataset.img_list[batch_index * size + i]
         last_path = os.path.basename(img_path)
         is_label = current_prediction[i]
         data.append([last_path, is_label])
     df = pd.DataFrame(data, columns=["img_name", f"is_{label_name}"])
-    print(tabulate(df, headers='keys', tablefmt='grid'))
+    print(df)
+    # display(df)
 
-def traversal_label_loader(label_loader, label_size): 
+def traversal_label_loader(label_loader, label_size, print_gap=None):  
     #/xxxxx/imagenet_cityu_test/val/ai/yy.jpg
     demo_path = label_loader.dataset.img_list[0]
     #保留'ai'
     label_name = os.path.basename(os.path.dirname(demo_path))
     right_label_image = 0
-    for index, (images, labels) in enumerate(label_loader):
+    for batch_index, (images, labels) in enumerate(label_loader):
+        if torch.cuda.is_available():
+            images = images.cuda() 
+            labels = labels.cuda()
         res = model(images)
         res = torch.sigmoid(res).ravel()
-        print("not good, current res is", res)
-        current_prediction = (((res > 0.5) & (labels == 1)) | ((res < 0.5) & (labels == 0))).cpu().numpy()
-        print_per_pic_res(index, len(images), current_prediction, label_name, label_loader)
+        current_prediction = (((res > 0.5) & (labels == 0)) | ((res < 0.5) & (labels == 1))).cpu().numpy()
+        # 一个batch是64,数据大的情况下，每隔print_gap*64个图片才打印一次识别
+        if (print_gap is not None) and batch_index % print_gap == 0 :
+            print_per_pic_res(batch_index, len(images), current_prediction, label_name, label_loader)
         right_label_image += current_prediction.sum()
     print(f'{label_name} accu:{right_label_image / label_size}')
     return right_label_image
 
-def val(test_data_list, model):
+def val(val_loader, model, print_gap=None):
     model.eval()
     total_right_image = total_image = 0
     with torch.no_grad():
-        for dict_loader in test_data_list:
-            name, val_ai_loader, ai_size, val_nature_loader, nature_size = dict_loader['name'], dict_loader['val_ai_loader'], dict_loader['ai_size'], dict_loader['val_nature_loader'], dict_loader['nature_size']
+        for loader in val_loader:
+            name, val_ai_loader, ai_size, val_nature_loader, nature_size = loader['name'], loader['val_ai_loader'], loader['ai_size'], loader['val_nature_loader'], loader['nature_size']
             print("val on:", name)
-            right_ai_image = traversal_label_loader(val_ai_loader, ai_size)
-            right_nature_image = traversal_label_loader(val_nature_loader, nature_size)
+            right_ai_image = traversal_label_loader(val_ai_loader, ai_size, print_gap)
+            right_nature_image = traversal_label_loader(val_nature_loader, nature_size, print_gap)
             accu = (right_ai_image + right_nature_image) / (ai_size + nature_size)
             total_right_image += right_ai_image + right_nature_image
             total_image += ai_size + nature_size
@@ -580,39 +670,59 @@ def get_options():
         'log_name': 'log3.log',
         'val_interval': 1,
         'val_batchsize': 64,
-        'test_set_dir': None
+        'test_set_dir': None,
+        'print_gap':2
     }
     opt = Opt(**options)
     return opt
 
-def rewrite_test_opt(test_dataset_path, load_model_path=None):
+# %% [markdown]
+# # 1. Only need to modify is just the below cell, other cells should remain still.
+# # 2. The code will choose GPU or CPU automatically
+
+# %%
+def rewrite_test_opt(test_dataset_path):
     test_opt = get_options()
     test_opt.choices = [2]
-    test_opt.image_root = '/Users/sequel/linkcodes/homework/ml/data/genImage'
+    test_opt.image_root = os.path.dirname(test_dataset_path)
     test_opt.test_set_dir = test_dataset_path
-    test_opt.load = './cityu.pth' if load_model_path is None else load_model_path
+    #务必保证snapshot在同级目录下，如果加载不成功要修改为绝对路径
+    #------------------------------------------------------------!!!2.可能需要修改的点2-已训练模型的路径(大概率不用)
+    test_opt.load =  './cityu.pth'
+    #每隔64*print_gap个图片打印改批次识别情况
+    test_opt.print_gap = 20
     return test_opt
 
 if __name__ == '__main__':
     set_random_seed()
-    #修改为数据集所在的绝对路径，不是相对
-    # input_test_dataset_path = input("输入测试集的文件夹名称(无绝对路径):")
-    test_opt = rewrite_test_opt("imagenet_cityu_test")
+    #------------------------------------------------------------!!!1.可能需要修改的点-测试数据集所在的文件夹【绝对路径】
+    #All you need to do is just to modify this variate
+    # test_dataset_absolute_path = ''
+    test_dataset_absolute_path = '/Users/sequel/linkcodes/homework/ml/data/genImage/imagenet_cityu_test'
+
+    if  not test_dataset_absolute_path:
+        print("Not specify the absolute path of test dataset")
+        sys.exit(1)
+    test_opt = rewrite_test_opt(test_dataset_absolute_path)
+    
+    if torch.cuda.is_available() and test_opt.gpu_id == '0':
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+        print('USE GPU 0')
+
     # load data
     print('load data...')
-    test_data_list = get_test_data_list(test_opt)
-    print(test_data_list)
+    val_loader = get_test_data_list(test_opt)
 
-    # load model
-    model = ssp()
+    enable_cuda = torch.cuda.is_available()
+    model = ssp().cuda() if enable_cuda else ssp()
+    device = torch.device('cuda' if enable_cuda else 'cpu')
    
     if test_opt.load is None:
         print("not found model")
-    model.load_state_dict(torch.load(test_opt.load, map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load(test_opt.load, map_location=device))
     print('load model from', test_opt.load)
     print("Start test")
-
-    val(test_data_list, model)
-
+        
+    val(val_loader, model, test_opt.print_gap)
 
 
