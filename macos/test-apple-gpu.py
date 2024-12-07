@@ -10,6 +10,7 @@ from networks.ssp import ssp
 from utils.options import get_options
 from utils.tdataloader import get_val_dict_infos
 from utils.util import set_random_seed, print_per_pic_res
+import datetime
 
 """Currently assumes jpg_prob, blur_prob 0 or 1"""
 from PIL import ImageFile
@@ -35,7 +36,7 @@ def traversal_label_loader(label_loader, label_size, print_gap=None):
     print(f'{label_name} accu:{right_label_image / label_size}')
     return right_label_image
 
-def val(val_loader, model, print_gap=None):
+def velify_for_test(val_loader, model, print_gap=None):
     model.eval()
     total_right_image = total_image = 0
     with torch.no_grad():
@@ -63,7 +64,7 @@ def rewrite_test_opt():
     test_opt.dataset_names = ['my_test']
     #务必保证snapshot在同级目录下，如果加载不成功要修改为绝对路径
     #------------------------------------------------------------!!!2.可能需要修改的点2-已训练模型的路径(大概率不用)
-    test_opt.load = '../snapshot/sortnet/Net_epoch_best.pth'
+    test_opt.load = '../snapshot/sortnet/macos_net_epoch_best_0.pth'
     #每隔64*print_gap个图片打印改批次识别情况
     test_opt.print_gap = 20
     return test_opt
@@ -75,7 +76,7 @@ if __name__ == '__main__':
     test_opt = rewrite_test_opt()
 
     # load data
-    print('load data...')
+    print(f'load data...{datetime.datetime.now()}')
     val_loader = get_val_dict_infos(test_opt)
 
     devicelink = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -88,5 +89,5 @@ if __name__ == '__main__':
     print('load model from', test_opt.load)
     print("Start test")
 
-    val(val_loader, model, test_opt.print_gap)
+    velify_for_test(val_loader, model, test_opt.print_gap)
 

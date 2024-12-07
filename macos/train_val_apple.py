@@ -60,6 +60,7 @@ def traversal_label_loader(label_loader, label_size, print_gap=None):
             labels = labels.to(torch.device("mps"))
         res = model(images)
         res = torch.sigmoid(res).ravel()
+        #res > 0.5 is nature pic, res < 0.5 is ai pic
         current_prediction = (((res > 0.5) & (labels == 1)) | ((res < 0.5) & (labels == 0))).cpu().numpy()
         # 一个batch是64,数据大的情况下，每隔print_gap*64个图片才打印一次识别
         if (print_gap is not None) and batch_index % print_gap == 0:
@@ -69,7 +70,7 @@ def traversal_label_loader(label_loader, label_size, print_gap=None):
     return right_label_image
 
 
-def varify(val_loader, model, epoch, save_path, print_gap=10):
+def varify_for_train(val_loader, model, epoch, save_path, print_gap=10):
     model.eval()
     global best_epoch, best_accu
     total_right_image = total_image = 0
@@ -149,4 +150,4 @@ if __name__ == '__main__':
     for epoch in range(1, train_opt.epochs + 1):
         cur_lr = poly_lr(optimizer, train_opt.lr, epoch, train_opt.epochs)
         train(train_loader, model, optimizer, epoch, train_opt)
-        varify(val_loader, model, epoch, save_path)
+        varify_for_train(val_loader, model, epoch, save_path)
